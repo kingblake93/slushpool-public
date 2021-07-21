@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
+import json
 
 import email, smtplib, ssl
 
@@ -15,8 +16,10 @@ import json
 class ApiGrabber:
     def __init__(self,
                  slush_endpoint='https://slushpool.com/stats/json/btc/',
-                 slush_key='',
+                 # slush_key='og0nJAZX89ySkddh',
                  btc_endpoint='https://api.coindesk.com/v1/bpi/currentprice.json'):
+
+        slush_key = self.get_slush_key()
         self.slush_request = requests.get(slush_endpoint,
                                           headers={'SlushPool-Auth-Token': slush_key})
         self.slush_recent_blocks = json.loads(self.slush_request.content.decode())['btc']['blocks']
@@ -24,6 +27,18 @@ class ApiGrabber:
         self.btc_request = requests.get(btc_endpoint)
         self.btc_price = json.loads(self.btc_request.content.decode())['bpi']['USD']['rate_float']
 
+    @staticmethod
+    def get_slush_key():
+        try:
+            with open('.slushpool', 'r') as infile:
+                infile_dict = json.load(infile)
+                return infile_dict['key']
+        except:
+            key = input('Please input your slushpool API key: ')
+            temp_dict = {'key': key}
+            with open('.slushpool', 'w') as infile:
+                json.dump(temp_dict, infile)
+                return temp_dict['key']
 
 def initial_build():
     api_info = ApiGrabber()
@@ -226,11 +241,20 @@ def get_target_capex_recovery(all_rewards_df, capex=1.02397):
 
     return future_date.strftime("%Y-%m-%d")
 
-def get_email_cred():
-    with open('gmail_email_login_info.json', 'r') as fh:
-        email_cred = json.load(fh)
 
-    return email_cred
+def get_email_cred():
+    try:
+        with open('.email_cred', 'r') as infile:
+            infile_dict = json.load(infile)
+            return infile_dict
+    except:
+        address = input('Please input your python email address: ')
+        pw = input('Please input your python email pw: ')
+        temp_dict = {'sender_email': address,
+                     'password': pw}
+        with open('.email_cred', 'w') as infile:
+            json.dump(temp_dict, infile)
+            return temp_dict
 
 
 class Email():
@@ -290,4 +314,4 @@ class Email():
 
 
 if __name__ == '__main__':
-    _ = pd.read_csv('all_rewards.csv')
+    update_log()
