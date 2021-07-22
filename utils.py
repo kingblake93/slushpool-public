@@ -16,7 +16,6 @@ import json
 class ApiGrabber:
     def __init__(self,
                  slush_endpoint='https://slushpool.com/stats/json/btc/',
-                 # slush_key='og0nJAZX89ySkddh',
                  btc_endpoint='https://api.coindesk.com/v1/bpi/currentprice.json'):
 
         slush_key = self.get_slush_key()
