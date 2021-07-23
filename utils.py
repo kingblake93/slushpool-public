@@ -16,7 +16,6 @@ import json
 class ApiGrabber:
     def __init__(self,
                  slush_endpoint='https://slushpool.com/stats/json/btc/',
-                 # slush_key='og0nJAZX89ySkddh',
                  btc_endpoint='https://api.coindesk.com/v1/bpi/currentprice.json'):
 
         slush_key = self.get_slush_key()
@@ -39,6 +38,7 @@ class ApiGrabber:
             with open('.slushpool', 'w') as infile:
                 json.dump(temp_dict, infile)
                 return temp_dict['key']
+
 
 def initial_build():
     api_info = ApiGrabber()
@@ -242,6 +242,31 @@ def get_target_capex_recovery(all_rewards_df, capex=1.02397):
     return future_date.strftime("%Y-%m-%d")
 
 
+def get_cost_basis(rewards='all_rewards.csv'):
+    _ = pd.read_csv(rewards)
+    first_day = _.iloc[0]['found_at']
+    first_day = datetime.strptime(first_day, '%Y-%m-%d %H:%M:%S')
+    first_day = first_day.strftime('%Y-%m-%d')
+
+    last_day = _.iloc[len(_) - 1]['found_at']
+    last_day = datetime.strptime(last_day, '%Y-%m-%d %H:%M:%S')
+    last_day = last_day.strftime('%Y-%m-%d')
+
+    historical_data = requests.get(
+        f'https://api.coindesk.com/v1/bpi/historical/close.json?start={first_day}&end={last_day}')
+    bpi_dict = json.loads(historical_data.content)['bpi']
+
+    _['found_at'] = pd.to_datetime(_['found_at'], format="%Y-%m-%d")
+
+    for index, row in _.iterrows():
+        btc_close = bpi_dict[row['found_at'].date().__str__()]
+        cost_basis = btc_close * row['user_reward']
+        _.loc[index, 'btc_close'] = btc_close
+        _.loc[index, 'cost_basis'] = cost_basis
+
+    _.to_csv('cost_basis_report.csv', index=False)
+
+
 def get_email_cred():
     try:
         with open('.email_cred', 'r') as infile:
@@ -314,4 +339,13 @@ class Email():
 
 
 if __name__ == '__main__':
-    update_log()
+
+    get_cost_basis(rewards='all_rewards.csv')
+
+    email_cred = get_email_cred()
+    email = Email(email_cred['sender_email'], email_cred['password'],
+                  recipient='mlarking77@gmail.com',
+                  subject=f'Cost Basis using BTC Close',
+                  body=f'See attached for example cost basis report using just BTC closing price')
+    email.attach_file('cost_basis_report.csv')
+    email.send()
