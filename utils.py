@@ -71,6 +71,9 @@ def initial_build():
 
 
 def update_log():
+    timestamp = datetime.now().strftime("%A, %d. %B %Y %I:%M%p")
+    print(timestamp)
+
     df = pd.read_csv('all_rewards.csv')
 
     api_info = ApiGrabber()
@@ -135,7 +138,7 @@ def update_log():
 
 
 def get_daily_btc(full_history_df, start=0, end=9999999, prints=True):
-
+    _ = ApiGrabber()
     full_blocks = full_history_df
 
     full_blocks = full_blocks.loc[(full_blocks['height'] >= start) &
@@ -158,15 +161,16 @@ def get_daily_btc(full_history_df, start=0, end=9999999, prints=True):
     daily_average = total_reward/delta
 
     if prints is True:
-        print(f'Current Daily Average: {round(daily_average, 6)}')
-        print(f'Total Reward: {round(total_reward, 9)}')
+        print(f'Current Daily Average: {round(daily_average, 6)} ~ ${round(daily_average*_.btc_price, 2)}')
+        print(f'Current Monthly Average: {round(daily_average*(365/12), 6)} ~ ${round(daily_average*(365/12)*_.btc_price, 2)}')
+        print(f'Total Reward: {round(total_reward, 9)} ~ ${round(total_reward*_.btc_price, 2)}')
         print(f'Time period range: {round(delta, 2)} days')
         print('-'*len(f'Current Daily Average: {round(daily_average, 6)}'))
 
     return daily_average, total_reward
 
 
-def diff_period_averages(all_rewards_df):
+def get_diff_period_averages(all_rewards_df):
     BLOCK_PERIOD_START = 0
 
     first_block = int(all_rewards_df['height'][1])
@@ -266,6 +270,8 @@ def get_cost_basis(rewards='all_rewards.csv'):
 
     _.to_csv('cost_basis_report.csv', index=False)
 
+    return 'cost_basis_report.csv'
+
 
 def get_email_cred():
     try:
@@ -338,14 +344,20 @@ class Email():
             server.sendmail(self.sender_email, self.recipient, self.message.as_string())
 
 
-if __name__ == '__main__':
-
-    get_cost_basis(rewards='all_rewards.csv')
+def send_cost_basis_report(rewards_csv='all_rewards.csv', recipient_email='mlarking77@gmail.com'):
+    filename = get_cost_basis(rewards=rewards_csv)
 
     email_cred = get_email_cred()
     email = Email(email_cred['sender_email'], email_cred['password'],
-                  recipient='mlarking77@gmail.com',
+                  recipient=recipient_email,
                   subject=f'Cost Basis using BTC Close',
                   body=f'See attached for example cost basis report using just BTC closing price')
-    email.attach_file('cost_basis_report.csv')
+    email.attach_file(filename)
     email.send()
+
+if __name__ == '__main__':
+    _ = pd.read_csv('all_rewards.csv')
+    get_diff_period_averages(_)
+    # get_daily_btc(full_history_df=_)
+    # capex_recovered = get_target_capex_recovery(all_rewards_df=_)
+    # print(f"Capex recovery by: {capex_recovered}")

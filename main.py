@@ -6,10 +6,6 @@ from utils import *
 
 while True:
     try:
-        # Get a string timestamp of RIGHT NOW in the format of
-        # %A, %d. %B %Y %I:%M%p.
-        timestamp = datetime.now().strftime("%A, %d. %B %Y %I:%M%p")
-        print(timestamp)
 
         # Run update_log(), this will do all the heavy lifting
         # of the script.
