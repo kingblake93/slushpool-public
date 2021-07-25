@@ -355,9 +355,23 @@ def send_cost_basis_report(rewards_csv='all_rewards.csv', recipient_email='mlark
     email.attach_file(filename)
     email.send()
 
+
+def get_todays_report(all_rewards_df):
+
+    api = ApiGrabber()
+    temp_df, days_sum = get_todays_reward(all_rewards_df=all_rewards_df)
+    num_blocks = len(temp_df)
+    dollar_sum = round(days_sum*api.btc_price, 2)
+
+    return temp_df, days_sum, dollar_sum, num_blocks
+
 if __name__ == '__main__':
     _ = pd.read_csv('all_rewards.csv')
-    get_diff_period_averages(_)
+    data = get_todays_report(_)
+    for item in data:
+        print(item)
+    # get_diff_period_averages(_)
+
     # get_daily_btc(full_history_df=_)
     # capex_recovered = get_target_capex_recovery(all_rewards_df=_)
     # print(f"Capex recovery by: {capex_recovered}")
