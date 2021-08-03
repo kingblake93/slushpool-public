@@ -87,7 +87,7 @@ def update_log():
     block_heights = get_block_heights(df)
     next_adjustment = block_heights[-1]
 
-    target_date = get_target_capex_recovery(all_rewards_df=df)
+    target_date, percent_capex = get_target_capex_recovery(all_rewards_df=df)
 
     for key, block in recent_blocks.items():
         if key not in [str(height) for height in list(df['height'])]:
@@ -124,7 +124,7 @@ def update_log():
                                f'${round(api_info.btc_price*_["user_reward"], 2)}\n'
                                f'Diff period: {round(period_completion, 2)}% Complete\n'
                                f'Diff period: {blocks_til_adjustment} blocks remaining\n'
-                               f'Target Capex Recovery: {target_date}')
+                               f'Target Capex Recovery: {target_date} | {percent_capex}')
             email.send()
 
     df = df.sort_values(by='height')
@@ -243,7 +243,7 @@ def get_target_capex_recovery(all_rewards_df, capex=1.02397):
 
     future_date = datetime.now() + timedelta(days=days_capex)
 
-    return future_date.strftime("%Y-%m-%d")
+    return future_date.strftime("%Y-%m-%d"), round(100*(total_reward/capex), 2)
 
 
 def get_cost_basis(rewards='all_rewards.csv'):
@@ -268,9 +268,11 @@ def get_cost_basis(rewards='all_rewards.csv'):
         _.loc[index, 'btc_close'] = btc_close
         _.loc[index, 'cost_basis'] = cost_basis
 
-    _.to_csv('cost_basis_report.csv', index=False)
+    writer = pd.ExcelWriter('cost_basis_report.xlsx', engine='xlsxwriter')
+    _.to_excel(writer, sheet_name='Block Rewards')
+    writer.save()
 
-    return 'cost_basis_report.csv'
+    return 'cost_basis_report.xlsx'
 
 
 def get_email_cred():
@@ -344,7 +346,7 @@ class Email():
             server.sendmail(self.sender_email, self.recipient, self.message.as_string())
 
 
-def send_cost_basis_report(rewards_csv='all_rewards.csv', recipient_email='mlarking77@gmail.com'):
+def send_cost_basis_report(*, rewards_csv='all_rewards.csv', recipient_email='mlarking77@gmail.com'):
     filename = get_cost_basis(rewards=rewards_csv)
 
     email_cred = get_email_cred()
@@ -365,13 +367,20 @@ def get_todays_report(all_rewards_df):
 
     return temp_df, days_sum, dollar_sum, num_blocks
 
+
 if __name__ == '__main__':
     _ = pd.read_csv('all_rewards.csv')
+
+    # send_cost_basis_report(recipient_email='blake.king@protonmail.com')
+
+    # get_cost_basis()
+    #
     data = get_todays_report(_)
     for item in data:
         print(item)
-    # get_diff_period_averages(_)
+    get_diff_period_averages(_)
 
-    # get_daily_btc(full_history_df=_)
-    # capex_recovered = get_target_capex_recovery(all_rewards_df=_)
-    # print(f"Capex recovery by: {capex_recovered}")
+    get_daily_btc(full_history_df=_)
+    capex_recovered, percent_complete = get_target_capex_recovery(all_rewards_df=_)
+    print(f"Capex recovery by: {capex_recovered}")
+    print(f"Capex recovered: {percent_complete}%")
